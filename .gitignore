@@ -1,0 +1,8 @@
+dist/
+
+*.test
+*.wasm
+
+.DS_Store
+.env
+.env.*

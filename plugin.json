@@ -1,0 +1,136 @@
+{
+  "manifestVersion": "1.0",
+  "id": "swiss-hike",
+  "name": "Swiss Hike",
+  "description": "Imports public hike suggestions from Schweizer Wanderwege.",
+  "version": "0.1.0",
+  "runtime": {
+    "type": "wasm",
+    "entrypoint": "plugin.wasm"
+  },
+  "capabilities": [
+    {
+      "name": "list_routes",
+      "version": "v1",
+      "export": "list_routes_v1"
+    },
+    {
+      "name": "get_route_detail",
+      "version": "v1",
+      "export": "get_route_detail_v1"
+    }
+  ],
+  "auth": {
+    "contexts": {
+      "provider_session": {
+        "type": "session",
+        "fields": ["email", "password"],
+        "secretFields": ["email", "password"],
+        "refresh": {
+          "mode": "plugin",
+          "function": "refresh_session_v1"
+        }
+      }
+    }
+  },
+  "permissions": {
+    "network": {
+      "connectors": [
+        {
+          "name": "site",
+          "type": "public_api",
+          "fixedBaseURL": "https://www.schweizer-wanderwege.ch",
+          "allowedPathPrefixes": ["/de", "/login_check"]
+        },
+        {
+          "name": "geo",
+          "type": "public_api",
+          "fixedBaseURL": "https://prod.sww-geo.apps.gs-ch-prod.camptocamp.com",
+          "allowedPathPrefixes": ["/file", "/de/export"]
+        },
+        {
+          "name": "community",
+          "type": "public_api",
+          "fixedBaseURL": "https://rando-community.ch",
+          "allowedPathPrefixes": ["/oauth", "/de/users"]
+        }
+      ]
+    },
+    "auth": ["provider_session"],
+    "downloads": {
+      "maxBytes": 16777216,
+      "contentTypes": [
+        "application/json",
+        "text/json",
+        "text/html",
+        "application/gpx+xml",
+        "application/xml",
+        "text/xml",
+        "application/octet-stream"
+      ]
+    },
+    "uploads": {
+      "maxBytes": 65536,
+      "contentTypes": ["application/x-www-form-urlencoded"]
+    }
+  },
+  "configSchema": [
+    {
+      "key": "maxPhotos",
+      "type": "text",
+      "label": "Max photos",
+      "labels": {
+        "de": "Max. Fotos",
+        "en": "Max photos"
+      },
+      "description": "Maximum photos to import per hike. Leave empty for no limit, use 0 for none.",
+      "descriptions": {
+        "de": "Maximale Anzahl Fotos pro Wanderung. Leer lassen für kein Limit, 0 importiert keine Fotos.",
+        "en": "Maximum photos to import per hike. Leave empty for no limit, use 0 for none."
+      }
+    },
+    {
+      "key": "debugLogging",
+      "type": "boolean",
+      "label": "Debug logging",
+      "labels": {
+        "de": "Debug-Logging",
+        "en": "Debug logging"
+      },
+      "description": "Emit detailed timing logs for Swiss Hike list, login, and detail requests.",
+      "descriptions": {
+        "de": "Detaillierte Timing-Logs für Swiss-Hike-Listen-, Login- und Detailabfragen ausgeben.",
+        "en": "Emit detailed timing logs for Swiss Hike list, login, and detail requests."
+      },
+      "default": false,
+      "hidden": true
+    }
+  ],
+  "hostConfig": {
+    "planned": true,
+    "completed": false,
+    "privacy": "provider",
+    "merge": {
+      "available": false,
+      "enabled": false
+    },
+    "categoryMapping": {
+      "hike": "Hiking"
+    }
+  },
+  "metadata": {
+    "displayName": "Schweizer Wanderwege",
+    "displayNames": {
+      "de": "Schweizer Wanderwege",
+      "en": "Swiss Hiking Trails"
+    },
+    "descriptions": {
+      "de": "Importiert öffentliche Wandervorschläge der Schweizer Wanderwege.",
+      "en": "Imports public hike suggestions from Swiss Hiking Trails."
+    },
+    "icons": {
+      "light": "icon.svg",
+      "dark": "icon_dark.svg"
+    }
+  }
+}
