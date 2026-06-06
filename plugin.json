@@ -1,8 +1,9 @@
 {
   "manifestVersion": "1.0",
   "id": "swiss-hike",
+  "type": "integration",
   "name": "Swiss Hike",
-  "description": "Imports public hike suggestions from Schweizer Wanderwege.",
+  "description": "Imports public hike suggestions from Swiss Hiking Trails, including photos, into wanderer.",
   "version": "0.1.0",
   "runtime": {
     "type": "wasm",
@@ -144,8 +145,8 @@
       "en": "Swiss Hiking Trails"
     },
     "descriptions": {
-      "de": "Importiert öffentliche Wandervorschläge der Schweizer Wanderwege.",
-      "en": "Imports public hike suggestions from Swiss Hiking Trails."
+      "de": "Importiert öffentliche Wandervorschläge der Schweizer Wanderwege inklusive Fotos in wanderer.",
+      "en": "Imports public hike suggestions from Swiss Hiking Trails, including photos, into wanderer."
     },
     "icons": {
       "light": "icon.svg",
