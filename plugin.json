@@ -109,7 +109,7 @@
   "hostConfig": {
     "planned": true,
     "completed": false,
-    "privacy": "provider",
+    "privacy": "original",
     "merge": {
       "available": false,
       "enabled": false
