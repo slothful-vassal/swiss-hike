@@ -24,8 +24,14 @@
     "contexts": {
       "provider_session": {
         "type": "session",
-        "fields": ["email", "password"],
-        "secretFields": ["email", "password"],
+        "fields": [
+          "email",
+          "password"
+        ],
+        "secretFields": [
+          "email",
+          "password"
+        ],
         "refresh": {
           "mode": "plugin",
           "function": "refresh_session_v1"
@@ -40,23 +46,34 @@
           "name": "site",
           "type": "public_api",
           "fixedBaseURL": "https://www.schweizer-wanderwege.ch",
-          "allowedPathPrefixes": ["/de", "/login_check"]
+          "allowedPathPrefixes": [
+            "/de",
+            "/login_check"
+          ]
         },
         {
           "name": "geo",
           "type": "public_api",
           "fixedBaseURL": "https://prod.sww-geo.apps.gs-ch-prod.camptocamp.com",
-          "allowedPathPrefixes": ["/file", "/de/export"]
+          "allowedPathPrefixes": [
+            "/file",
+            "/de/export"
+          ]
         },
         {
           "name": "community",
           "type": "public_api",
           "fixedBaseURL": "https://rando-community.ch",
-          "allowedPathPrefixes": ["/oauth", "/de/users"]
+          "allowedPathPrefixes": [
+            "/oauth",
+            "/de/users"
+          ]
         }
       ]
     },
-    "auth": ["provider_session"],
+    "auth": [
+      "provider_session"
+    ],
     "downloads": {
       "maxBytes": 16777216,
       "contentTypes": [
@@ -71,7 +88,9 @@
     },
     "uploads": {
       "maxBytes": 65536,
-      "contentTypes": ["application/x-www-form-urlencoded"]
+      "contentTypes": [
+        "application/x-www-form-urlencoded"
+      ]
     }
   },
   "configSchema": [
@@ -131,6 +150,14 @@
     "icons": {
       "light": "icon.svg",
       "dark": "icon_dark.svg"
+    },
+    "providerCategories": {
+      "hike": {
+        "labels": {
+          "de": "Wandern",
+          "en": "Hiking"
+        }
+      }
     }
   }
 }
