@@ -1,7 +1,7 @@
 {
   "manifestVersion": "1.0",
   "id": "swiss-hike",
-  "type": "integration",
+  "type": "trails",
   "name": "Swiss Hike",
   "description": "Imports public hike suggestions from Swiss Hiking Trails, including photos, into wanderer.",
   "version": "0.1.0",
