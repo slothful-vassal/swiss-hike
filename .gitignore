@@ -1,4 +1,5 @@
 dist/
+plugin_dist/
 
 *.test
 *.wasm

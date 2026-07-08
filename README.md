@@ -22,3 +22,12 @@ make build
 ```
 
 The built bundle is written to `dist/swiss-hike`.
+
+Release archives use the same layout as wanderer's first-party plugin assets:
+
+```sh
+make package
+```
+
+Push a `vX.Y.Z` tag matching `plugin.json`'s `version` to publish a GitHub
+release with `wanderer-plugin-swiss-hike.tar.gz` and `SHA256SUMS`.
