@@ -31,5 +31,5 @@ make package
 
 To publish, run the `Publish Release` GitHub Action manually from `main` with a
 version such as `0.1.0`. The workflow updates `plugin.json`, commits the version
-bump, creates the matching `vX.Y.Z` tag, and publishes
+bump, creates and pushes the matching `vX.Y.Z` tag, and publishes
 `wanderer-plugin-swiss-hike.tar.gz` plus `SHA256SUMS`.

@@ -7,9 +7,6 @@ on:
         description: 'Release version, for example 0.1.0 or v0.1.0'
         required: true
         type: string
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write
@@ -29,52 +26,42 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            if [ "${GITHUB_REF_NAME}" != "main" ]; then
-              echo "Manual releases must be run from the main branch." >&2
-              exit 1
-            fi
-
-            RAW_VERSION="${{ github.event.inputs.version }}"
-            VERSION="${RAW_VERSION#v}"
-            TAG="v${VERSION}"
-
-            if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-              echo "Invalid release version ${RAW_VERSION}. Use a version like 0.1.0." >&2
-              exit 1
-            fi
-
-            if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
-              echo "Tag ${TAG} already exists." >&2
-              exit 1
-            fi
-
-            tmp="$(mktemp)"
-            jq --arg version "${VERSION}" '.version = $version' plugin.json > "${tmp}"
-            mv "${tmp}" plugin.json
-
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add plugin.json
-
-            if git diff --cached --quiet; then
-              echo "plugin.json already contains version ${VERSION}."
-            else
-              git commit -m "Release ${TAG}"
-              git push origin "HEAD:${GITHUB_REF_NAME}"
-            fi
-
-            git tag "${TAG}"
-            git push origin "${TAG}"
-          else
-            TAG="${GITHUB_REF_NAME}"
-            VERSION="${TAG#v}"
-            PLUGIN_VERSION="$(jq -r '.version' plugin.json)"
-            if [ "${TAG}" != "v${PLUGIN_VERSION}" ]; then
-              echo "Release tag ${TAG} does not match plugin.json version ${PLUGIN_VERSION} (v${PLUGIN_VERSION})." >&2
-              exit 1
-            fi
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            echo "Manual releases must be run from the main branch." >&2
+            exit 1
           fi
+
+          RAW_VERSION="${{ github.event.inputs.version }}"
+          VERSION="${RAW_VERSION#v}"
+          TAG="v${VERSION}"
+
+          if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "Invalid release version ${RAW_VERSION}. Use a version like 0.1.0." >&2
+            exit 1
+          fi
+
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists." >&2
+            exit 1
+          fi
+
+          tmp="$(mktemp)"
+          jq --arg version "${VERSION}" '.version = $version' plugin.json > "${tmp}"
+          mv "${tmp}" plugin.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plugin.json
+
+          if git diff --cached --quiet; then
+            echo "plugin.json already contains version ${VERSION}."
+          else
+            git commit -m "Release ${TAG}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+          git tag "${TAG}"
+          git push origin "${TAG}"
 
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
