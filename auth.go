@@ -246,7 +246,7 @@ func connectorRequest(connector string, method string, path string, query []sdk.
 }
 
 func connectorTarget(rawLocation string, defaultConnector string) (string, string, []sdk.QueryParam, error) {
-	parsed, err := url.Parse(htmlUnescape(rawLocation))
+	parsed, err := url.Parse(normalizeLocationURL(rawLocation))
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -281,7 +281,8 @@ func resolveConnectorLocation(connector string, location string) string {
 	if location == "" {
 		return ""
 	}
-	parsed, err := url.Parse(htmlUnescape(location))
+	location = normalizeLocationURL(location)
+	parsed, err := url.Parse(location)
 	if err != nil || parsed.IsAbs() {
 		return location
 	}

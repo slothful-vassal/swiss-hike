@@ -11,7 +11,6 @@ import (
 )
 
 func pageImport(externalID string, page hikePage, gpx []byte, maxPhotos int) trailImport {
-	privacy := "public"
 	metadata := map[string]any{
 		"providerCategory": "hike",
 		"sourceDifficulty": page.Difficulty,
@@ -42,7 +41,6 @@ func pageImport(externalID string, page hikePage, gpx []byte, maxPhotos int) tra
 		Name:         page.Title,
 		Description:  page.Description,
 		ActivityType: "hiking",
-		Privacy:      &privacy,
 		Track: track{
 			Format:        "gpx",
 			ContentBase64: base64.StdEncoding.EncodeToString(gpx),

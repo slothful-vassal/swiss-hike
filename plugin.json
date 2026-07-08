@@ -30,7 +30,6 @@
           "password"
         ],
         "secretFields": [
-          "email",
           "password"
         ],
         "refresh": {
@@ -129,7 +128,7 @@
   "hostConfig": {
     "planned": true,
     "completed": false,
-    "privacy": "original",
+    "privacy": "settings",
     "merge": {
       "available": false,
       "enabled": false

@@ -1,34 +1,32 @@
-//go:build tinygo
-
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"html"
 	"net/url"
 	"strconv"
 	"strings"
-
-	"golang.org/x/net/html"
 )
 
+type htmlBlock struct {
+	StartTag string
+	Inner    string
+}
+
 func parseHikeHTML(body []byte) (hikePage, error) {
-	root, err := html.Parse(bytes.NewReader(body))
-	if err != nil {
-		return hikePage{}, err
-	}
-	main := firstElement(root, "main", nil)
-	if main == nil {
+	htmlText := string(body)
+	main, ok := firstHTMLBlock(htmlText, "main", nil)
+	if !ok {
 		return hikePage{}, fmt.Errorf("page has no main element")
 	}
 
 	page := hikePage{
-		Title:       extractTitle(root),
-		Description: extractDescription(main),
-		Photos:      extractPhotos(main),
-		GPXURL:      absolutizeURL(extractGPXURL(main)),
+		Title:       extractTitle(htmlText),
+		Description: extractDescription(main.Inner),
+		Photos:      extractPhotos(main.Inner),
+		GPXURL:      absolutizeURL(extractGPXURL(main.Inner)),
 	}
-	metadata := extractMetadata(main)
+	metadata := extractMetadata(main.Inner)
 	page.DurationSeconds = metadata.DurationSeconds
 	page.DistanceMeters = metadata.DistanceMeters
 	page.ElevationGainMeters = metadata.ElevationGainMeters
@@ -37,61 +35,65 @@ func parseHikeHTML(body []byte) (hikePage, error) {
 	return page, nil
 }
 
-func extractTitle(root *html.Node) string {
-	title := firstElement(root, "title", nil)
-	if title == nil {
+func extractTitle(htmlText string) string {
+	title, ok := firstHTMLBlock(htmlText, "title", nil)
+	if !ok {
 		return ""
 	}
-	return normalizeText(textContent(title))
+	return normalizeText(htmlTextContent(title.Inner))
 }
 
-func extractDescription(main *html.Node) string {
-	section := firstElement(main, "section", func(n *html.Node) bool {
-		return attr(n, "id") == "content_hike"
+func extractDescription(main string) string {
+	section, ok := firstHTMLBlock(main, "section", func(tag string) bool {
+		return htmlAttr(tag, "id") == "content_hike"
 	})
-	if section == nil {
+	if !ok {
 		return ""
 	}
-	content := firstElement(section, "div", func(n *html.Node) bool {
-		return hasClass(n, "l-hike-content")
+	content, ok := firstHTMLBlock(section.Inner, "div", func(tag string) bool {
+		return tagHasClass(tag, "l-hike-content")
 	})
-	if content == nil {
+	if !ok {
 		return ""
 	}
-	textBlock := firstElement(content, "div", func(n *html.Node) bool {
-		return hasClass(n, "l-text")
-	})
-	if textBlock != nil {
-		return normalizeText(textContent(textBlock))
+	if textBlock, ok := firstHTMLBlock(content.Inner, "div", func(tag string) bool {
+		return tagHasClass(tag, "l-text")
+	}); ok {
+		return normalizeText(htmlTextContent(textBlock.Inner))
 	}
-	return normalizeText(textContent(content))
+	return normalizeText(htmlTextContent(content.Inner))
 }
 
-func extractPhotos(main *html.Node) []pagePhoto {
-	slideshow := firstElement(main, "ul", func(n *html.Node) bool {
-		return hasClass(n, "uk-slideshow-items")
+func extractPhotos(main string) []pagePhoto {
+	slideshow, ok := firstHTMLBlock(main, "ul", func(tag string) bool {
+		return tagHasClass(tag, "uk-slideshow-items")
 	})
-	if slideshow == nil {
+	if !ok {
 		return nil
 	}
 
 	photos := make([]pagePhoto, 0)
-	for _, anchor := range allElements(slideshow, "a", func(n *html.Node) bool {
-		return attr(n, "href") != ""
+	for _, anchor := range htmlBlocks(slideshow.Inner, "a", func(tag string) bool {
+		return htmlAttr(tag, "href") != ""
 	}) {
-		caption := strings.TrimSpace(attr(anchor, "data-caption"))
+		caption := strings.TrimSpace(htmlAttr(anchor.StartTag, "data-caption"))
 		if caption == "" {
-			if img := firstElement(anchor, "img", nil); img != nil {
-				caption = strings.TrimSpace(attr(img, "alt"))
+			for _, img := range htmlTags(anchor.Inner, "img") {
+				caption = strings.TrimSpace(htmlAttr(img, "alt"))
+				if caption != "" {
+					break
+				}
 			}
 		}
-		photos = append(photos, pagePhoto{URL: absolutizeURL(attr(anchor, "href")), Caption: normalizeText(caption)})
+		photos = append(photos, pagePhoto{URL: absolutizeURL(htmlAttr(anchor.StartTag, "href")), Caption: normalizeText(caption)})
 	}
 	if len(photos) == 0 {
-		for _, img := range allElements(slideshow, "img", func(n *html.Node) bool {
-			return attr(n, "src") != ""
-		}) {
-			photos = append(photos, pagePhoto{URL: absolutizeURL(attr(img, "src")), Caption: normalizeText(attr(img, "alt"))})
+		for _, img := range htmlTags(slideshow.Inner, "img") {
+			src := htmlAttr(img, "src")
+			if src == "" {
+				continue
+			}
+			photos = append(photos, pagePhoto{URL: absolutizeURL(src), Caption: normalizeText(htmlAttr(img, "alt"))})
 		}
 	}
 
@@ -107,20 +109,30 @@ func extractPhotos(main *html.Node) []pagePhoto {
 	return deduped
 }
 
-func extractGPXURL(main *html.Node) string {
-	for _, tile := range allElements(main, "div", func(n *html.Node) bool {
-		return hasClass(n, "ct-download-tile")
+func extractGPXURL(main string) string {
+	for _, tile := range htmlBlocks(main, "div", func(tag string) bool {
+		return tagHasClass(tag, "ct-download-tile")
 	}) {
-		for _, anchor := range allElements(tile, "a", func(n *html.Node) bool {
-			return attr(n, "href") != ""
-		}) {
-			href := attr(anchor, "href")
-			if strings.HasSuffix(strings.ToLower(href), ".gpx") {
+		for _, anchor := range htmlTags(tile.Inner, "a") {
+			href := htmlAttr(anchor, "href")
+			if isGPXHref(href) {
 				return href
 			}
 		}
 	}
 	return ""
+}
+
+func isGPXHref(href string) bool {
+	parsed, err := url.Parse(href)
+	if err == nil {
+		return strings.HasSuffix(strings.ToLower(parsed.Path), ".gpx")
+	}
+	clean := href
+	if index := strings.IndexAny(clean, "?#"); index >= 0 {
+		clean = clean[:index]
+	}
+	return strings.HasSuffix(strings.ToLower(clean), ".gpx")
 }
 
 type metadataValues struct {
@@ -131,19 +143,17 @@ type metadataValues struct {
 	Difficulty          string
 }
 
-func extractMetadata(main *html.Node) metadataValues {
-	container := firstElement(main, "div", func(n *html.Node) bool {
-		return hasClass(n, "l-metadata")
+func extractMetadata(main string) metadataValues {
+	container, ok := firstHTMLBlock(main, "div", func(tag string) bool {
+		return tagHasClass(tag, "l-metadata")
 	})
-	if container == nil {
+	if !ok {
 		return metadataValues{}
 	}
 	values := metadataValues{}
-	for _, item := range allElements(container, "", func(n *html.Node) bool {
-		return attr(n, "uk-tooltip") != ""
-	}) {
-		tooltip := strings.TrimSpace(attr(item, "uk-tooltip"))
-		text := normalizeText(textContent(item))
+	for _, item := range htmlBlocksWithAttr(container.Inner, "uk-tooltip") {
+		tooltip := strings.TrimSpace(htmlAttr(item.StartTag, "uk-tooltip"))
+		text := normalizeText(htmlTextContent(item.Inner))
 		switch tooltip {
 		case "Wanderzeit":
 			values.DurationSeconds = parseDurationSeconds(text)
@@ -167,44 +177,171 @@ func extractMetadata(main *html.Node) metadataValues {
 	return values
 }
 
-func firstElement(root *html.Node, tag string, match func(*html.Node) bool) *html.Node {
-	for child := root.FirstChild; child != nil; child = child.NextSibling {
-		if child.Type == html.ElementNode && (tag == "" || child.Data == tag) && (match == nil || match(child)) {
-			return child
-		}
-		if found := firstElement(child, tag, match); found != nil {
-			return found
-		}
+func firstHTMLBlock(htmlText string, tagName string, match func(string) bool) (htmlBlock, bool) {
+	for _, block := range htmlBlocks(htmlText, tagName, match) {
+		return block, true
 	}
-	return nil
+	return htmlBlock{}, false
 }
 
-func allElements(root *html.Node, tag string, match func(*html.Node) bool) []*html.Node {
-	var result []*html.Node
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.ElementNode && (tag == "" || n.Data == tag) && (match == nil || match(n)) {
-			result = append(result, n)
+func htmlBlocks(htmlText string, tagName string, match func(string) bool) []htmlBlock {
+	lower := strings.ToLower(htmlText)
+	tagName = strings.ToLower(tagName)
+	blocks := make([]htmlBlock, 0)
+	for search := 0; search < len(htmlText); {
+		start := findHTMLTag(lower, tagName, false, search)
+		if start < 0 {
+			break
 		}
-		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
+		startEnd := htmlTagEnd(htmlText, start)
+		if startEnd < 0 {
+			break
+		}
+		startTag := htmlText[start:startEnd]
+		search = startEnd
+		if isHTMLSelfClosing(startTag) || isHTMLVoidTag(tagName) {
+			continue
+		}
+		closeStart, _ := matchingHTMLClose(lower, tagName, startEnd)
+		if closeStart < 0 {
+			continue
+		}
+		if match == nil || match(startTag) {
+			blocks = append(blocks, htmlBlock{StartTag: startTag, Inner: htmlText[startEnd:closeStart]})
 		}
 	}
-	walk(root)
-	return result
+	return blocks
 }
 
-func attr(n *html.Node, key string) string {
-	for _, attr := range n.Attr {
-		if attr.Key == key {
-			return htmlUnescape(attr.Val)
+func htmlBlocksWithAttr(htmlText string, attrName string) []htmlBlock {
+	lower := strings.ToLower(htmlText)
+	blocks := make([]htmlBlock, 0)
+	for search := 0; search < len(htmlText); {
+		start := strings.IndexByte(lower[search:], '<')
+		if start < 0 {
+			break
 		}
+		start += search
+		tagName, closing := htmlTagNameAt(lower, start)
+		if tagName == "" || closing {
+			search = start + 1
+			continue
+		}
+		startEnd := htmlTagEnd(htmlText, start)
+		if startEnd < 0 {
+			break
+		}
+		startTag := htmlText[start:startEnd]
+		search = startEnd
+		if htmlAttr(startTag, attrName) == "" || isHTMLSelfClosing(startTag) || isHTMLVoidTag(tagName) {
+			continue
+		}
+		closeStart, _ := matchingHTMLClose(lower, tagName, startEnd)
+		if closeStart < 0 {
+			continue
+		}
+		blocks = append(blocks, htmlBlock{StartTag: startTag, Inner: htmlText[startEnd:closeStart]})
 	}
-	return ""
+	return blocks
 }
 
-func hasClass(n *html.Node, className string) bool {
-	for _, part := range strings.Fields(attr(n, "class")) {
+func matchingHTMLClose(lower string, tagName string, from int) (int, int) {
+	depth := 1
+	for search := from; search < len(lower); {
+		nextOpen := findHTMLTag(lower, tagName, false, search)
+		nextClose := findHTMLTag(lower, tagName, true, search)
+		if nextClose < 0 {
+			return -1, -1
+		}
+		if nextOpen >= 0 && nextOpen < nextClose {
+			openEnd := htmlTagEnd(lower, nextOpen)
+			if openEnd < 0 {
+				return -1, -1
+			}
+			if !isHTMLSelfClosing(lower[nextOpen:openEnd]) && !isHTMLVoidTag(tagName) {
+				depth++
+			}
+			search = openEnd
+			continue
+		}
+		closeEnd := htmlTagEnd(lower, nextClose)
+		if closeEnd < 0 {
+			return -1, -1
+		}
+		depth--
+		if depth == 0 {
+			return nextClose, closeEnd
+		}
+		search = closeEnd
+	}
+	return -1, -1
+}
+
+func findHTMLTag(lower string, tagName string, closing bool, start int) int {
+	for search := start; search < len(lower); {
+		index := strings.IndexByte(lower[search:], '<')
+		if index < 0 {
+			return -1
+		}
+		index += search
+		foundName, foundClosing := htmlTagNameAt(lower, index)
+		if foundName == tagName && foundClosing == closing {
+			return index
+		}
+		search = index + 1
+	}
+	return -1
+}
+
+func htmlTagNameAt(lower string, start int) (string, bool) {
+	if start < 0 || start >= len(lower) || lower[start] != '<' {
+		return "", false
+	}
+	i := start + 1
+	if i >= len(lower) || lower[i] == '!' || lower[i] == '?' {
+		return "", false
+	}
+	closing := false
+	if lower[i] == '/' {
+		closing = true
+		i++
+	}
+	for i < len(lower) && isHTMLSpace(lower[i]) {
+		i++
+	}
+	if i >= len(lower) || !isHTMLNameStart(lower[i]) {
+		return "", closing
+	}
+	nameStart := i
+	for i < len(lower) && isHTMLNameChar(lower[i]) {
+		i++
+	}
+	return lower[nameStart:i], closing
+}
+
+func htmlTagEnd(htmlText string, start int) int {
+	end := strings.IndexByte(htmlText[start:], '>')
+	if end < 0 {
+		return -1
+	}
+	return start + end + 1
+}
+
+func isHTMLSelfClosing(tag string) bool {
+	return strings.HasSuffix(strings.TrimSpace(tag), "/>")
+}
+
+func isHTMLVoidTag(tagName string) bool {
+	switch tagName {
+	case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
+		return true
+	default:
+		return false
+	}
+}
+
+func tagHasClass(tag string, className string) bool {
+	for _, part := range strings.Fields(htmlAttr(tag, "class")) {
 		if part == className {
 			return true
 		}
@@ -212,19 +349,38 @@ func hasClass(n *html.Node, className string) bool {
 	return false
 }
 
-func textContent(n *html.Node) string {
+func htmlTextContent(htmlText string) string {
 	var builder strings.Builder
-	var walk func(*html.Node)
-	walk = func(node *html.Node) {
-		if node.Type == html.TextNode {
-			builder.WriteString(node.Data)
+	lower := strings.ToLower(htmlText)
+	for i := 0; i < len(htmlText); {
+		if htmlText[i] == '<' {
+			tagName, closing := htmlTagNameAt(lower, i)
+			end := htmlTagEnd(htmlText, i)
+			if end < 0 {
+				break
+			}
+			if !closing && (tagName == "script" || tagName == "style" || tagName == "svg") {
+				if _, closeEnd := matchingHTMLClose(lower, tagName, end); closeEnd > 0 {
+					i = closeEnd
+					builder.WriteByte('\n')
+					continue
+				}
+			}
+			builder.WriteByte('\n')
+			i = end
+			continue
+		}
+		next := strings.IndexByte(htmlText[i:], '<')
+		if next < 0 {
+			next = len(htmlText) - i
+		}
+		text := htmlUnescape(htmlText[i : i+next])
+		if strings.TrimSpace(text) != "" {
+			builder.WriteString(text)
 			builder.WriteByte('\n')
 		}
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
-		}
+		i += next
 	}
-	walk(n)
 	return builder.String()
 }
 
@@ -237,7 +393,21 @@ func normalizeText(text string) string {
 			parts = append(parts, line)
 		}
 	}
-	return strings.Join(strings.Fields(strings.Join(parts, "\n")), " ")
+	return compactPunctuationSpacing(strings.Join(strings.Fields(strings.Join(parts, "\n")), " "))
+}
+
+func compactPunctuationSpacing(text string) string {
+	replacer := strings.NewReplacer(
+		" .", ".",
+		" ,", ",",
+		" ;", ";",
+		" :", ":",
+		" !", "!",
+		" ?", "?",
+		" )", ")",
+		"( ", "(",
+	)
+	return replacer.Replace(text)
 }
 
 func htmlUnescape(value string) string {

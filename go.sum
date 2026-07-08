@@ -2,5 +2,3 @@ github.com/extism/go-pdk v1.1.3 h1:hfViMPWrqjN6u67cIYRALZTZLk/enSPpNKa+rZ9X2SQ=
 github.com/extism/go-pdk v1.1.3/go.mod h1:Gz+LIU/YCKnKXhgge8yo5Yu1F/lbv7KtKFkiCSzW/P4=
 github.com/open-wanderer/wanderer/plugins/sdk v0.1.0 h1:Za7lfh2fGLX4zroXic/fM0UHzhRyqM6JXsxC0CUQkSY=
 github.com/open-wanderer/wanderer/plugins/sdk v0.1.0/go.mod h1:4FYaiu3sBfEJ2SPxEaO9DPPvoXm670jmDI7PlvX2Ujg=
-golang.org/x/net v0.53.0 h1:d+qAbo5L0orcWAr0a9JweQpjXF19LMXJE8Ey7hwOdUA=
-golang.org/x/net v0.53.0/go.mod h1:JvMuJH7rrdiCfbeHoo3fCQU24Lf5JJwT9W3sJFulfgs=
