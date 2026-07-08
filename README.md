@@ -29,5 +29,7 @@ Release archives use the same layout as wanderer's first-party plugin assets:
 make package
 ```
 
-Push a `vX.Y.Z` tag matching `plugin.json`'s `version` to publish a GitHub
-release with `wanderer-plugin-swiss-hike.tar.gz` and `SHA256SUMS`.
+To publish, run the `Publish Release` GitHub Action manually from `main` with a
+version such as `0.1.0`. The workflow updates `plugin.json`, commits the version
+bump, creates the matching `vX.Y.Z` tag, and publishes
+`wanderer-plugin-swiss-hike.tar.gz` plus `SHA256SUMS`.
